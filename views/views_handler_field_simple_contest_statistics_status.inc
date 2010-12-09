@@ -1,5 +1,5 @@
 <?php
-// $Id: views_handler_field_simple_contest_statistics_status.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: views_handler_field_simple_contest_statistics_status.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 /**
  * Display simple_contest_statistics_status

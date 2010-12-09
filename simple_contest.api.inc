@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.api.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest.api.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 
 function simple_contest_finalize_results_all(){
@@ -14,11 +14,6 @@ function simple_contest_finalize_results_all(){
 		
 		if(empty($settings['date_field'])){
 			watchdog('simple_contest', 'Date field for the contest %type is not set.'  , array('%type' => $type),  WATCHDOG_WARNING);
-			continue;
-		}
-		
-		// process only for automatic winner selection types
-		if($settings['winner_selection_type'] != 'auto'){
 			continue;
 		}
 		
@@ -44,7 +39,7 @@ function simple_contest_finalize_results_all(){
 			GROUP BY n.nid ORDER BY " . $column_name ." 
 			";
 		
-		$res = db_query($sql, $type, SIMPLE_CONTEST_STATUS_ACTIVE);
+		$res = db_query($sql);
 		
 		while($row = db_fetch_object($res)){
 		
@@ -81,10 +76,10 @@ function simple_contest_finalize_results_node(&$node, $settings = NULL){
 	$winners = array();
 
 	if (empty($view->result) || !is_array($view->result)) {
-		return $items;
+		return;
 	}
 
-	$count = 0;
+	$count = 1;
 	$field = ($settings['winner_type'] == 'user') ? 'uid' : 'nid';
 	foreach ($view->result as $i => $row) {
 		if(!isset($row->$field)){
@@ -92,6 +87,7 @@ function simple_contest_finalize_results_node(&$node, $settings = NULL){
 			break;
 		}
 		$winners[] = $row->$field;
+		$count++;
 		if($count >= $settings['max_winners']){
 			break;
 		}
@@ -105,14 +101,10 @@ function simple_contest_finalize_results_node(&$node, $settings = NULL){
 function simple_contest_save_result(&$node, $winners){
 
 	global $language;
-	$settings = simple_contest_get_settings($node->type);
+	$settings = simple_contest_get_settings($type);
 	
-	// delete the old
-	$sql = "DELETE FROM {simple_contest_results} WHERE nid = %d";
-	db_query($sql, $node->nid);
-	
-	$sql = "UPDATE {simple_contest_statistics} SET status = %d, winners_count = %d, timestamp = %d WHERE nid = %d";
-	db_query($sql, SIMPLE_CONTEST_STATUS_COMPLETED, count($winners), time(), $node->nid);
+	$sql = "UPDATE {simple_contest_statistics} SET status = 1, winners_count = %d, timestamp = %d WHERE nid = %d";
+	db_query($sql, count($winners), time(), $node->nid);
 	
 	$new_winners = array();
 	
@@ -131,7 +123,7 @@ function simple_contest_save_result(&$node, $winners){
 		while($row = db_fetch_object($res)){
 			$tmp_winners[$row->nid] = $row->uid;
 		}
-		$weight = 0;
+		$weight = 1;
 		foreach($winners as $nid){ // to keep the weight
 			$uid = 0; 
 			if(isset($tmp_winners[$nid])){
@@ -171,9 +163,7 @@ function simple_contest_save_result(&$node, $winners){
 			);
 			
 			drupal_mail('simple_contest', 'winners_mail', $user->mail, $language, $params);
-			
 		}
-		
 	}
 	
 	if($settings['email_to_participants']){
@@ -444,34 +434,4 @@ function simple_contest_referrers($nid,  $fieldname = '', $nodetypes = array(), 
 	}
 
   return $values;
-}
-
-function simple_contest_status_name($status){
-	$options = array(
-		SIMPLE_CONTEST_STATUS_INACTIVE => 'Disabled', 
-		SIMPLE_CONTEST_STATUS_ACTIVE => 'Active',
-		SIMPLE_CONTEST_STATUS_CANCELED => 'Canceled',
-		SIMPLE_CONTEST_STATUS_COMPLETED => 'Completed',
-	);
-	if (!isset($options[$status])){
-		return '';
-	}
-	return $options[$status]; //  t() not used.
-	
-}
-
-function simple_contest_node_winners_themed($node){
-	if(!isset($node->simple_contest['status'])){
-		return '';
-	}
-	$settings = simple_contest_get_settings($node->type);
-	if($node->simple_contest['status'] == SIMPLE_CONTEST_STATUS_COMPLETED){
-		$results_display_view = $settings['results_display_view'];
-		$results = views_embed_view($results_display_view, 'default', $node->nid);
-		
-		return theme('simple_contest_results_display', $node, $results);
-		
-	}
-	
-	return '';
 }

@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.token.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest.token.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 /**
  * @file
  * 

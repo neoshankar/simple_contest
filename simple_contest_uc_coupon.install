@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest_uc_coupon.install,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest_uc_coupon.install,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 function simple_contest_uc_coupon_install() {
   drupal_install_schema('simple_contest_uc_coupon');
@@ -22,10 +22,6 @@ function simple_contest_uc_coupon_schema() {
 			'cid' => array(
         'type' => 'int',
         'description' => t('coupon id.'),
-        'not null' => TRUE),
-			'value' => array(
-        'type' => 'numeric',
-        'description' => t('coupon value.'),
         'not null' => TRUE),
     ),
     'indexes' => array(

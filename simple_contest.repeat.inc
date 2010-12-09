@@ -1,5 +1,5 @@
 <?php
-//$Id: simple_contest.repeat.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+//$Id: simple_contest.repeat.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 /**
  * @file
  * Implementation of Date Repeat API for the contest.
@@ -81,7 +81,8 @@ function _simple_contest_date_repeat_widget(&$element, $form_state, $settings) {
 	$element['schedule']['defaults_nid_desc'] = array(
 		//'#type' => 'markup',
     '#title' => t('Contest defaults node'),
-    '#value' => t("Default node is the *Unpublished* template node which will be used when creating scheduled contests. The default node for this contest is !node.", array('!node' => l($def_node->title, 'node/' . $def_node->nid))),
+    '#value' => t("Default node is the *Unpublished* template node which will be used when creating scheduled contests. <br />
+				The default node for this contest is !node.", array('!node' => l($def_node->title, 'node/' . $def_node->nid))),
   );
 	
   return $element;

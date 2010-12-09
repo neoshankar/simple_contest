@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.install,v 1.1.2.2 2010/07/10 04:59:23 4vinoth Exp $
+// $Id: simple_contest.install,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 function simple_contest_install() {
   drupal_install_schema('simple_contest');
@@ -54,7 +54,7 @@ function simple_contest_schema() {
         'type' => 'int',
         'description' => t('total participants.'), // 
         'not null' => FALSE),
-			'timestamp' => array(
+			'timstamp' => array(
         'type' => 'int',
 				'description' => t('when the results were calculated.'),
         'not null' => TRUE),
@@ -101,11 +101,5 @@ function simple_contest_schema() {
   return $schema;
 }
 
-function simple_contest_update_1() {
-	$result = array();
-  if (!db_column_exists('simple_contest_statistics', 'timestamp')) {
-    db_change_field($result, 'simple_contest_statistics', 'timstamp', 'timestamp', array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0));
-  }
-  return $result;
-}
+
 

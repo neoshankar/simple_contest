@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.admin.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest.admin.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 /**
  * @file
@@ -38,16 +38,7 @@ function simple_contest_content_type_settings_form(&$form_state, $type) {
     '#collapsed' => FALSE,
     '#weight' => 0,
   );
-	
-  $form['simple_contest']['winner_selection_type'] = array(
-      '#type' => 'select',
-      '#title' => t('winner selection type'),
-      '#default_value' => $settings['winner_selection_type'],
-      '#options' => array('auto' => t('Auto'), 'manual' => t('Manual'),),
-      '#required' => TRUE,
-			'#description' => t('Winners selection type.'),
-  ); 
-	
+  
   $options = array();
   
   $views = views_get_all_views();
@@ -60,32 +51,11 @@ function simple_contest_content_type_settings_form(&$form_state, $type) {
   
   $form['simple_contest']['view'] = array(
       '#type' => 'select',
-      '#title' => t('select view for winner selection'),
+      '#title' => t('select vew for winner selection'),
       '#default_value' => $settings['view'],
       '#options' => $options,
       '#required' => TRUE,
 			'#description' => t('This view will be used to finalize the winners.'),
-  );
-	$fields = array();
-	if($settings['view']){
-		$view = views_get_view($settings['view']);
-		//print_r($view);
-		foreach($view->display['default']->display_options['fields'] as $id=>$field){
-			if($field['label']){
-				$fields[$id] = t($field['label']);
-			}
-		}
-	}else{
-		$fields = array('nid' => t('Node ID'));
-	}
-
-	$form['simple_contest']['view_field'] = array(
-		'#type' => 'select',
-		'#title' => t('veiw field that contains the Node ID or user ID.'),
-		'#default_value' => $settings['view_field'],
-		'#options' => $fields,
-		'#required' => TRUE,
-		'#description' => t('Select ths depends on the Contest type.'),
   ); 
 	
   $form['simple_contest']['results_display_view'] = array(
@@ -305,8 +275,8 @@ function bsguitar_theme_cart_review_table() {
 
 function simple_contest_content_type_settings_form_validate($form, &$form_state) {
 
-	module_load_include('inc', 'date_api', 'date_api_ical');	
-	_simple_contest_date_repeat_widget_validate($form, &$form_state);
+	//module_load_include('inc', 'date_api', 'date_api_ical');	
+	//_simple_contest_date_repeat_widget_validate($form, &$form_state);
 	
 }
 
@@ -322,7 +292,7 @@ function simple_contest_content_type_settings_form_submit($form, &$form_state) {
 	
 	variable_set('simple_contest_' . $form_state['type'], $settings);
 	
-	_simple_contest_date_repeat_widget_submit($form, &$form_state);
+	//_simple_contest_date_repeat_widget_submit($form, &$form_state);
 	
   drupal_set_message('Your changes have been saved.');
 

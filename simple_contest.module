@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.module,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest.module,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 /**
  * @file
  * 
@@ -32,9 +32,8 @@ function simple_contest_perm() {
 		$perms[] = 'join ' . $type;
 		//$perms[] = 'leave ' . $type;
 		//$perms[] = 'access ' . $type . ' participants';
-		$perms[] = 'finalize ' . $type;
 	}
-	$perms[] = 'administer simple contest';
+	//$perms[] = 'administer simple contest';
   return $perms;
 }
 
@@ -75,7 +74,7 @@ function simple_contest_menu() {
 		'title' => 'Simple contest Settings',
 		'description' => 'Configure the Simple contests.',
 		'page callback' => 'drupal_get_form',
-		'page arguments' => array('simple_contest_admin_settings_form'),
+		'page arguments' => array('simple_contest_admin_settings_form', $type),
 		'access callback' => 'user_access',
 		'access arguments' => array('administer simple contest'),
 		'type' => MENU_LOCAL_TASK,
@@ -83,18 +82,7 @@ function simple_contest_menu() {
 		'file' => 'simple_contest.admin.inc',
 	);
 	
-	$items['node/%node/simple_contest'] = array(
-		'title' => 'Contest',
-		'description' => 'Finalize the winners for the contest.',
-		'page callback' => 'simple_contest_finalize_page',
-		'page arguments' => array(1),
-		'access callback' => 'simple_contest_finalize_access',
-		'access arguments' => array(1),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 5,
-		'file' => 'simple_contest.pages.inc',
-	);
-	
+
   return $items;
 }
 
@@ -128,6 +116,12 @@ function simple_contest_form_alter(&$form, $form_state, $form_id) {
       '#description' => t('additional configurations can be found in "Simple contest" tab.'),
       '#return_value' => array(),
     );
+    $form['simple_contest']['simple_contest_submit'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Use this content type to submit content to a Simple contest.'),
+      '#default_value' => simple_contest_is_contest_submission_type($form['#node_type']->type),
+      '#return_value' => array(),
+    );    
     
   }
 	
@@ -260,7 +254,31 @@ function simple_contest_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 		if ($op == 'update'){
 			$sql = 'UPDATE {simple_contest_statistics} SET status = %d 
 							WHERE nid = %d';
-			db_query($sql, $node->simple_contest['status'], $node->nid);			
+			db_query($sql, $node->simple_contest['status'], $node->nid);
+
+
+      if($node->simple_contest['status'] == SIMPLE_CONTEST_STATUS_COMPLETED){
+        // check if the winners are already generated for this node.
+        $sql = 'SELECT * FROM {simple_contest_results} WHERE nid = %d';
+        $result = db_query($sql, $node->nid);
+        if(!$result) {        
+        $results_display_view = $settings['results_display_view'];
+        $wview = views_get_view($results_display_view);
+        $wview->build('default');
+        $wview->execute('default');
+        $winners = $wview->result; 
+          foreach($winners as $rank => $winner) {
+            $win_nid[] = $winner->nid;        
+            $sql = 'INSERT INTO {simple_contest_results} (nid, uid, wnid, weight) 
+          VALUES (%d, %d, %d, %d)';
+          db_query($sql, $node->nid, $winner->users_uid, $winner->nid,$rank);
+          }
+        }
+      }
+
+
+
+      			
 		}
 		
 		if ($op == 'load' ){
@@ -288,16 +306,18 @@ function simple_contest_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 			db_query($sql, $node->nid);
 		}
 		
-		if($op == 'view'){
-			if($node->simple_contest['status'] == SIMPLE_CONTEST_STATUS_COMPLETED){
+		if($op == 'view'){     
+			if($node->simple_contest['status'] == SIMPLE_CONTEST_STATUS_COMPLETED){	  
+				//$results_display_view = $settings['results_display_view'];
+        $results_display_view = 'show_winners';
+				$results = views_embed_view($results_display_view, 'default', $node->nid);
 				
 				$node->content['simple_contest'] = array(
-					'#value' => simple_contest_node_winners_themed($node),
+					'#value' => theme('simple_contest_results_display', $node, $results),
 				);
-				
 				$node->content['simple_contest'] += array(
 					'#weight' => module_exists('content') ? content_extra_field_weight($node->type, 'simple_contest') : 5,
-				);
+				); 
 			}
 		}
 		
@@ -306,14 +326,21 @@ function simple_contest_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 	if (simple_contest_is_contest_submission_type($node->type)){
 		
 		if ($op == 'insert'){
-			
+
 			if(isset($node->simple_contest['contest_nid']) && $node->simple_contest['contest_nid'] > 0){
 				$contest_node = node_load($node->simple_contest['contest_nid']);
 				$settings = simple_contest_get_settings($contest_node->type);
 				$ref_field = $settings['ref_field'];
-				if ($ref_field && isset($contest_node->$ref_field)){
+      /*echo '<pre>';
+      print_r($settings);
+      echo '===============';
+            print_r($ref_field);
+      exit();
+      echo '</pre>'; */        
+		//		if ($ref_field && isset($contest_node->$ref_field)){
+		      if ($ref_field){
 					$contest_node->{$ref_field}[count($contest_node->$ref_field)] = array(
-						'value' => $node->simple_contest['contest_nid']
+						'nid' => $node->simple_contest['contest_nid']
 					);
 					node_save($contest_node); // lets hooks called!
 					
@@ -462,7 +489,7 @@ function simple_contest_link($type, $object, $teaser = FALSE) {
  */
 function simple_contest_get_participant_types($type){
 	$types = node_get_types('types');
-	return array('design' => $types['design']);
+	return array('fiction' => $types['design']);
 }
 
 /**
@@ -494,27 +521,14 @@ function simple_contest_get_settings($type, $return = 'all') {
   return $settings[$return];
 }
 
-function simple_contest_finalize_access($node, $account = NULL){
-	global $user;
-	
-	if(!$account){
-		$account = $user;
-	}
-	
-	return simple_contest_is_simple_contest($node) && user_access('finalize ' . $node->type, $account);
-	
-}
-
 /**
  * Implementation of hook_simple_contest_settings()
  */
 function simple_contest_simple_contest_settings() {
   return array(
 		'type' => 'contest',						// content type
-		'winner_selection_type' => 'auto', // content type
     'view' => '',             			// default select view
-		'view_field' => '',             // default select view field
-		'results_display_view' => '',   // default select view
+		'results_display_view' => '',             			// default select view
     'date_field' => 'field_date',   // must be defined in cck
 		'ref_field' => '',   						// node reference or user reference field of the contest type
     'winner_type' => 'user',        // user or node
@@ -564,9 +578,10 @@ Thank You
 }
 
 function simple_contest_is_contest_submission_type($type){
-	if ($type == 'design'){
-	return TRUE;
-	}
+  if (is_object($type)) {
+    $type = $type->type;
+  }
+  return is_array(variable_get('simple_contest_submit_'. $type, FALSE));
 }
 
 
@@ -608,10 +623,6 @@ function simple_contest_theme() {
 			'arguments' => array('node' => NULL, 'results' => NULL),
 			'file' => 'simple_contest.theme.inc',
 		),
-		'simple_contest_views_selector' => array(
-      'arguments' => array('element' => NULL),
-			'file' => 'simple_contest.theme.inc',
-    ),
   );
 }
 
@@ -689,144 +700,3 @@ function simple_contest_content_extra_fields($type_name) {
 }
 
 
-/**
- * Implementation of hook_elements().
- */
-function simple_contest_elements() {
-  $type['simple_contest_views_selector'] = array(
-    '#input' => TRUE,
-    '#view' => NULL,
-    '#process' => array('simple_contest_views_selector_process'),
-  );
-  return $type;
-}
-
-/**
- * Process the simple_contest_views_selector element defined earlier.
- * 
- * @see simple_contest_views_selector_process()
- */
-function simple_contest_views_selector_process($element, $edit) {
-  $element['#tree'] = TRUE;
-  if (!isset($element['#value'])) {
-    $element['#value'] = array('selection' => array(), 'select_all' => FALSE);
-  }
-
-  $view = $element['#view'];
-  $options = array();
-  foreach ($view->result as $num => $object) {
-    $options[$num+1] = '';
-  }
-  $element['selection']['#options'] = $options;
-  $element['selection']['#value'] = $element['#value']['selection'];
-  $element['selection']['#attributes'] = array();
-  $element['selection'] = expand_checkboxes($element['selection']);
-  
-  $element['select_all'] = array('#type' => 'hidden', '#default_value' => $element['#value']['select_all']);
-  return $element; 
-}
-
-/**
- * Implementation of hook_forms().
- * 
- * Force each instance of function to use the same callback.
- */
-function simple_contest_forms() {
-  // Get the form ID.
-  $args = func_get_args();
-  $form_id = $args[0];
-  // Ensure we map a callback for our form and not something else.
-  $forms = array();
-  if (strpos($form_id, 'simple_contest_views_selector_form') === 0) {
-    // Let the forms API know where to get the form data corresponding
-    // to this form id.
-    $forms[$form_id] = array('callback' => 'simple_contest_views_selector_form');
-  }
-  return $forms;
-}
-
-
-/**
- * simple_contest_views_selector_form. Thanks to views Bulk operations. 
- */
-function simple_contest_views_selector_form($form_state, $plugin) {
-
-  $default_objects = array('selection' => NULL, 'select_all' => FALSE);
-  $default_operation = NULL;
-
-	$form['exposed_input'] = array(
-		'#type' => 'value',
-		'#value' => $plugin->view->get_exposed_input(),
-	);
-	$form['arguments'] = array(
-		'#type' => 'value',
-		'#value' => $plugin->view->args,
-	);
-
-	// If empty view, render the empty text.
-	if (!$plugin->view->result) {
-		$form['empty'] = array('#value' => $plugin->view->display_handler->render_empty());
-		return $form;
-	}
-  
-  $form['#plugin'] = $plugin;
-  
-	$form['objects'] = array(
-		'#type' => 'simple_contest_views_selector',
-		'#view' => $plugin->view,
-		'#sets' => $plugin->sets,
-		'#value' => $default_objects,
-		//'#prefix' => '<div class="simple-contest-views-selector">',
-		//'#suffix' => '</div>',
-	);
-	
-	$form['select']['op'] = array(
-		'#type' => 'submit',
-		'#value' => t('Finalize Winners'),
-	);
-  
-  // Use views_bulk_operations_form_submit() for form submit, regardless of form_id.
-  $form['#submit'][] = 'simple_contest_views_selector_form_submit';
-  $form['#validate'][] = 'simple_contest_views_selector_form_validate';
-	
-  return $form;
-}
-
-
-/**
- * Submit handler for the selected operation.
- * 
- * @see views_bulk_operations_form()
- */
-function simple_contest_views_selector_form_submit($form, &$form_state) {
-  $plugin = $form['#plugin'];
-  
-	$selection = $form_state['values']['objects']['selection'];
-	//print_r($form_state['values']);
-	
-	$node = node_load($form_state['values']['arguments'][0]);
-	
-	$settings = simple_contest_get_settings($node->type);
-	
-  $results = array();
-	foreach ($plugin->view->result as $num => $result) {
-		if ($selection[$num + 1]) {
-			foreach($plugin->view->display_handler->handlers['field'] as $fid =>$field){
-				//print($fid);
-				if($fid == $settings['view_field']){
-					//print_r($field);
-					$results[] = $result->{$field->field_alias};
-				}
-			}
-		}
-	}
-	if(!empty($results)){
-		simple_contest_save_result($node, $results);	
-		drupal_set_message(t('Contest results has been saved.'));
-	}else{
-		drupal_set_message(t('No winners has been selectd.'));
-	}
-	
-	//print_r($results);
-	
-}

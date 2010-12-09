@@ -1,5 +1,5 @@
 <?php
-// $Id: simple_contest.views.inc,v 1.1.2.1 2010/07/09 04:36:13 4vinoth Exp $
+// $Id: simple_contest.views.inc,v 1.1 2010/06/28 15:42:05 4vinoth Exp $
 
 
 
@@ -244,31 +244,6 @@ function simple_contest_views_handlers() {
         'parent' => 'views_handler_filter_in_operator',
       ),
 
-    ),
-  );
-}
-
-
-function simple_contest_views_plugins() {
-  return array(
-		
-    'style' => array(
-      'simple_contest_selector' => array(
-        'title' => t('Simple contest selector'),
-        'help' => t('Displays rows with checkboxes to choose winners.'),
-        'handler' => 'simple_contest_plugin_style',
-        'parent' => 'table',
-        'uses row plugin' => FALSE,
-        'uses fields' => TRUE,
-        'uses options' => FALSE,
-        'type' => 'normal',
-				'path' => drupal_get_path('module', 'simple_contest') . '/views',
-        //'theme' => 'simple_contest_views_selector',
-				'theme' => 'views_view_bulk',
-        'even empty' => FALSE,
-				'theme file' => 'simple_contest.theme.inc',
-        'theme path' => drupal_get_path('module','simple_contest')."/",
-      ),
     ),
   );
 }
